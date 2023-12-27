@@ -72,27 +72,31 @@ def set_random_seed(seed, deterministic=False):
 def train(cfg):
     logger = logging.getLogger("training")
     device = cfg.MODEL.DEVICE
-    model = BuildingDetector(cfg)
-    model = model.to(device)
+    # model = BuildingDetector(cfg)
+    # url = "https://github.com/XJKunnn/pretrained_model/releases/download/pretrained_model/crowdai_hrnet48_e100.pth"
+    # state_dict = torch.hub.load_state_dict_from_url(url, map_location=device, progress=True)
+    # state_dict = {k[7:]: v for k, v in state_dict['model'].items() if k[0:7] == 'module.'}
+    # model.load_state_dict(state_dict)
+    # model = model.to(device)
 
     train_dataset = build_train_dataset(cfg)
     
-    optimizer = make_optimizer(cfg,model)
-    scheduler = make_lr_scheduler(cfg,optimizer)
-    
-    loss_reducer = LossReducer(cfg)
+    # optimizer = make_optimizer(cfg,model)
+    # scheduler = make_lr_scheduler(cfg,optimizer)
+    #
+    # loss_reducer = LossReducer(cfg)
     
     arguments = {}
     arguments["epoch"] = 0
     max_epoch = cfg.SOLVER.MAX_EPOCH
     arguments["max_epoch"] = max_epoch
 
-    checkpointer = DetectronCheckpointer(cfg,
-                                        model,
-                                        optimizer,
-                                        save_dir=cfg.OUTPUT_DIR,
-                                        save_to_disk=True,
-                                        logger=logger)
+    # checkpointer = DetectronCheckpointer(cfg,
+    #                                     model,
+    #                                     optimizer,
+    #                                     save_dir=cfg.OUTPUT_DIR,
+    #                                     save_to_disk=True,
+    #                                     logger=logger)
 
     start_training_time = time.time()
     end = time.time()
@@ -104,7 +108,7 @@ def train(cfg):
 
     for epoch in range(start_epoch+1, arguments['max_epoch']+1):
         meters = MetricLogger(" ")
-        model.train()
+        # model.train()
         arguments['epoch'] = epoch
 
         for it, (images, annotations) in enumerate(train_dataset):

@@ -5,6 +5,7 @@ class DatasetCatalog(object):
 
     DATA_DIR = osp.abspath(osp.join(osp.dirname(__file__),
                 '..','..','data'))
+    DATA_DIR_ROOFAI = "/Users/sahilmodi/Projects/Git_Repos/detectron2/datasets/roofai_18k"
     
     DATASETS = {
         'crowdai_train_small': {
@@ -30,13 +31,24 @@ class DatasetCatalog(object):
         'inria_test': {
             'img_dir': 'coco-Aerial/val/images',
             'ann_file': 'coco-Aerial/val/annotation.json',
+        },
+        'roofai_train': {
+            'img_dir': 'train/images',
+            'ann_file': 'train/annotation.json'
+        },
+        'roofai_test': {
+            'img_dir': 'val/images',
+            'ann_file': 'val/annotation.json'
         }
     }
 
     @staticmethod
     def get(name):
         assert name in DatasetCatalog.DATASETS
-        data_dir = DatasetCatalog.DATA_DIR
+        if "roofai" in name:
+            data_dir = DatasetCatalog.DATA_DIR_ROOFAI
+        else:
+            data_dir = DatasetCatalog.DATA_DIR
         attrs = DatasetCatalog.DATASETS[name]
 
         args = dict(

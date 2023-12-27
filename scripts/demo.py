@@ -1,10 +1,12 @@
+import os
+
 import torch
 import argparse
 import numpy as np
 
 from skimage import io
 from hisup.config import cfg
-from hisup.detector import get_pretrained_model
+from hisup.detector import BuildingDetector
 from hisup.dataset.build import build_transform
 from hisup.utils.comm import to_single_device
 from hisup.utils.visualizer import show_polygons
@@ -137,32 +139,36 @@ def test(cfg, args):
     if not torch.cuda.is_available():
         device = 'cpu'
 
-    image = io.imread(args.img)[:, :, :3]
-    H, W = image.shape[:2]
-    img_mean, img_std = [], []
-    for i in range(image.shape[-1]):
-        pixels = image[:, :, i].ravel()
-        img_mean.append(np.mean(pixels))
-        img_std.append(np.std(pixels))
-    cfg.DATASETS.IMAGE.PIXEL_MEAN = img_mean
-    cfg.DATASETS.IMAGE.PIXEL_STD  = img_std
+    for imgname in os.listdir(args.img):
+        image = io.imread(os.path.join(args.img,imgname))[:, :, :3]
+        H, W = image.shape[:2]
+        img_mean, img_std = [], []
+        for i in range(image.shape[-1]):
+            pixels = image[:, :, i].ravel()
+            img_mean.append(np.mean(pixels))
+            img_std.append(np.std(pixels))
+        cfg.DATASETS.IMAGE.PIXEL_MEAN = img_mean
+        cfg.DATASETS.IMAGE.PIXEL_STD  = img_std
 
-    patching = False
-    if H > 512 or W > 512:
-        patching = True
-        cfg.DATASETS.ORIGIN.HEIGHT = 512 if H > 512 else H
-        cfg.DATASETS.ORIGIN.WIDTH = 512 if W > 512 else W
-    else:
-        cfg.DATASETS.ORIGIN.HEIGHT = H
-        cfg.DATASETS.ORIGIN.WIDTH = W
+        patching = False
+        if H > 512 or W > 512:
+            patching = True
+            cfg.DATASETS.ORIGIN.HEIGHT = 512 if H > 512 else H
+            cfg.DATASETS.ORIGIN.WIDTH = 512 if W > 512 else W
+        else:
+            cfg.DATASETS.ORIGIN.HEIGHT = H
+            cfg.DATASETS.ORIGIN.WIDTH = W
 
-    model = get_pretrained_model(cfg, args.dataset, device, pretrained=True)
-    model = model.to(device)
+        model = BuildingDetector(cfg, test=True)
+        state_dict = torch.load("/Users/sahilmodi/Projects/Git_Repos/HiSup/outputs/crowdai_hrnet48/model_00006.pth", map_location=torch.device('cpu'))
+        # state_dict = {k[7:]: v for k, v in state_dict['model'].items() if k[0:7] == 'module.'}
+        model.load_state_dict(state_dict["model"])
+        model = model.eval()
 
-    if not patching:
-        inference_no_patching(cfg, model, image, device)
-    else:
-        inference_with_patching(cfg, model, image, device)
+        if not patching:
+            inference_no_patching(cfg, model, image, device)
+        else:
+            inference_with_patching(cfg, model, image, device)
 
 
 if __name__ == "__main__":
