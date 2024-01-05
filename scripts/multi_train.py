@@ -55,6 +55,10 @@ def train(cfg):
     logger = logging.getLogger("trainer")
     device = cfg.MODEL.DEVICE
     model = BuildingDetector(cfg)
+    url = "https://github.com/XJKunnn/pretrained_model/releases/download/pretrained_model/crowdai_hrnet48_e100.pth"
+    state_dict = torch.hub.load_state_dict_from_url(url, map_location=device, progress=True)
+    state_dict = {k[7:]: v for k, v in state_dict['model'].items() if k[0:7] == 'module.'}
+    model.load_state_dict(state_dict)
     model = model.to(device)
     model = nn.parallel.DistributedDataParallel(model,
                                                 device_ids=[args.local_rank],
@@ -139,7 +143,7 @@ def train(cfg):
 
             if local_rank == 0:
                 if it % 20 == 0 or it + 1 == len(train_loader):
-                    logger.info(
+                    print(
                         meters.delimiter.join(
                             [
                                 "eta: {eta}",
@@ -158,6 +162,46 @@ def train(cfg):
                             memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
                         )
                     )
+
+                    with open(os.path.join(save_dir, "train.log"), 'a') as logf:
+                        logf.write(
+                            meters.delimiter.join(
+                                [
+                                    "eta: {eta}",
+                                    "epoch: {epoch}",
+                                    "iter: {iter}",
+                                    "{meters}",
+                                    "lr: {lr:.6f}",
+                                    "max mem: {memory:.0f}\n",
+                                ]
+                            ).format(
+                                eta=eta_string,
+                                epoch=epoch,
+                                iter=it,
+                                meters=str(meters),
+                                lr=optimizer.param_groups[0]["lr"],
+                                memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+                            )
+                        )
+                    # logger.info(
+                    #     meters.delimiter.join(
+                    #         [
+                    #             "eta: {eta}",
+                    #             "epoch: {epoch}",
+                    #             "iter: {iter}",
+                    #             "{meters}",
+                    #             "lr: {lr:.6f}",
+                    #             "max mem: {memory:.0f}\n",
+                    #         ]
+                    #     ).format(
+                    #         eta=eta_string,
+                    #         epoch=epoch,
+                    #         iter=it,
+                    #         meters=str(meters),
+                    #         lr=optimizer.param_groups[0]["lr"],
+                    #         memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+                    #     )
+                    # )
 
         if local_rank == 0:
             checkpointer.save('model_{:05d}'.format(epoch))

@@ -3,13 +3,14 @@ import os
 import torch
 import argparse
 import numpy as np
+import time
 
 from skimage import io
 from hisup.config import cfg
 from hisup.detector import BuildingDetector
 from hisup.dataset.build import build_transform
 from hisup.utils.comm import to_single_device
-from hisup.utils.visualizer import show_polygons
+from hisup.utils.visualizer import show_polygons, draw_roof_lines
 
 
 def parse_args():
@@ -31,7 +32,7 @@ def parse_args():
 
     return args
 
-def inference_no_patching(cfg, model, image, device):
+def inference_no_patching(cfg, model, image, imgname, res_dir, device):
     transform = build_transform(cfg)
     image_tensor = transform(image.astype(float))[None].to(device)
     meta = {
@@ -45,7 +46,10 @@ def inference_no_patching(cfg, model, image, device):
 
     if len(output['polys_pred']) > 0:
         polygons = output['polys_pred'][0]
-        show_polygons(image, polygons)
+        scores = output['scores'][0]
+
+        # show_polygons(image, polygons)
+        draw_roof_lines(image, imgname, polygons, scores, res_dir)
     else:
         print('No building polygons.')
 
@@ -139,9 +143,13 @@ def test(cfg, args):
     if not torch.cuda.is_available():
         device = 'cpu'
 
+    current_time = time.strftime("%Y%m%d_%H%M%S")
+    res_dir = os.path.join(cfg.OUTPUT_DIR, "plots_" + current_time)
+    os.makedirs(res_dir)
+
     for imgname in os.listdir(args.img):
         image = io.imread(os.path.join(args.img,imgname))[:, :, :3]
-        H, W = image.shape[:2]
+
         img_mean, img_std = [], []
         for i in range(image.shape[-1]):
             pixels = image[:, :, i].ravel()
@@ -150,27 +158,17 @@ def test(cfg, args):
         cfg.DATASETS.IMAGE.PIXEL_MEAN = img_mean
         cfg.DATASETS.IMAGE.PIXEL_STD  = img_std
 
-        patching = False
-        if H > 512 or W > 512:
-            patching = True
-            cfg.DATASETS.ORIGIN.HEIGHT = 512 if H > 512 else H
-            cfg.DATASETS.ORIGIN.WIDTH = 512 if W > 512 else W
-        else:
-            cfg.DATASETS.ORIGIN.HEIGHT = H
-            cfg.DATASETS.ORIGIN.WIDTH = W
-
         model = BuildingDetector(cfg, test=True)
-        state_dict = torch.load("/Users/sahilmodi/Projects/Git_Repos/HiSup/outputs/crowdai_hrnet48/model_00006.pth", map_location=torch.device('cpu'))
-        # state_dict = {k[7:]: v for k, v in state_dict['model'].items() if k[0:7] == 'module.'}
-        model.load_state_dict(state_dict["model"])
+        state_dict = torch.load("/Users/sahilmodi/Projects/Git_Repos/HiSup/outputs/crowdai_hrnet48/model_00033.pth", map_location=torch.device('cpu'))
+        state_dict = {k[7:]: v for k, v in state_dict['model'].items() if k[0:7] == 'module.'}
+        model.load_state_dict(state_dict)
+        # model.load_state_dict(state_dict["model"])
         model = model.eval()
 
-        if not patching:
-            inference_no_patching(cfg, model, image, device)
-        else:
-            inference_with_patching(cfg, model, image, device)
+        inference_no_patching(cfg, model, image, imgname, res_dir, device)
 
 
 if __name__ == "__main__":
     args = parse_args()
+    cfg.merge_from_file("config-files/crowdai_hrnet48.yaml")
     test(cfg, args)

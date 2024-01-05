@@ -91,7 +91,7 @@ class TestPipeline():
         self.dt_file = ''
     
     def test(self, model):
-        if 'crowdai' in self.dataset_name:
+        if 'crowdai' or 'roofai' in self.dataset_name:
             self.test_on_crowdai(model, self.dataset_name)
         elif 'inria' in self.dataset_name:
             self.test_on_inria(model, self.dataset_name)
@@ -125,7 +125,7 @@ class TestPipeline():
 
             for b in range(batch_size):
                 filename = annotations[b]['filename']
-                img_id = int(filename[:-4])
+                img_id = int(filename[:7])
 
                 scores = batch_scores[b]
                 polys = batch_polygons[b]

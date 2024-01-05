@@ -41,6 +41,45 @@ def show_polygons(image, polys):
     
     plt.show()
 
+def draw_roof_lines(img, imgname, polys, scores, res_dir):
+    """
+    Draws roof-lines with color coding based on confidence score of the segment as follows
+    [0.95, 1.0] - Red    - (255, 0, 0)
+    [0.9, 0.95) - Green  - (0, 255, 0)
+    [0.85, 0.9) - Blue   - (0, 0, 255)
+    [0.0, 0.85) - Yellow - (255, 255, 0)
+    """
+
+    for i, polygon in enumerate(polys):
+        poly_score = scores[i]
+
+        if poly_score >= 0.95:
+            r, g, b = (255, 0, 0)  # Red
+        elif poly_score >= 0.9:
+            r, g, b = (0, 255, 0)  # Green
+        elif poly_score >= 0.85:
+            r, g, b = (0, 0, 255)  # Blue
+        else:
+            r, g, b = (255, 255, 0)  # Yellow
+
+        for i in range(len(polygon)-1):
+            x1, y1 = polygon[i][0], polygon[i][1]
+            x2, y2 = polygon[i+1][0], polygon[i+1][1]
+
+            img = cv2.circle(img.copy(),
+                             center=(int(x1), int(y1)),
+                             radius=1,
+                             color=(255, 0, 255))
+
+            img = cv2.line(img.copy(),
+                           (int(x1), int(y1)),
+                           (int(x2), int(y2)),
+                           (r, g, b),
+                           thickness=1,
+                           lineType=cv2.LINE_AA)
+
+    plt.imsave(os.path.join(res_dir, imgname), img)
+
 def save_viz(image, polys, save_path, filename):
     plt.axis('off')
     plt.imshow(image)
